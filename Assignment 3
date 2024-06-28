@@ -1,0 +1,33 @@
+library(tidyverse)
+
+data <- read_csv('/Users/erictaylor/Downloads/StormEvents_details-ftp_v1.0_d2000_c20220425.csv')
+
+data <- data %>%
+  select(BEGIN_YEARMONTH, EPISODE_ID, STATE, STATE_FIPS, CZ_NAME, CZ_TYPE, CZ_FIPS, EVENT_TYPE)
+data <- data %>%
+  arrange(STATE)
+data <- data %>%
+  mutate(STATE = str_to_title(STATE), CZ_NAME = str_to_title(CZ_NAME))
+data <- data %>%
+  filter(CZ_TYPE == 'C') %>%
+  select(-CZ_TYPE)
+data <- data %>%
+  mutate(STATE_FIPS = str_pad(STATE_FIPS, 3, pad = '0'),
+         CZ_FIPS = str_pad(CZ_FIPS, 3, pad = '0')) %>%
+  unite('FIPS', STATE_FIPS, CZ_FIPS, sep = '', remove = TRUE)
+data <- data %>%
+  rename_all(tolower)
+data('state')
+us_state_info <- data.frame(state = state.name, region = state.region, area = state.area)
+events_per_state <- data %>%
+  count(state) %>%
+  rename(events = n)
+final_data <- merge(events_per_state, us_state_info, by = 'state')
+library(ggplot2)
+plot <- ggplot(final_data, aes(x = area, y = events, color = region)) +
+  geom_point() +
+  labs(title = '# of storm events in 2017 vs Land area',
+       x = 'Land area (square miles)',
+       y = '# of storm events in 2017') +
+  theme_minimal()
+ggsave('/mnt/data/storm_events_vs_land_area.png', plot = plot)
